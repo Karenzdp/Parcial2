@@ -50,4 +50,22 @@ class Departamento(CursoBase, table=True):
     profesores: list["Profesor"] = Relationship(back_populates="cursos")
     cursos: list["Curso"] = Relationship(back_populates="profesores")
 
+class Profesor(ProfesorBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    departamento_id: Optional[int] = Field(default=None, foreign_key="departamento.id")
+    departamento= Departamento= relationship(back_populates="profesores")
+    cursos: list["Curso"] = Relationship(back_populates="profesor")
+
+class Curso(CursoBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    profesor_id: int = Field(foreign_key="profesor.id")
+    departamento_id: int = Field(foreign_key="departamento.id")
+
+    profesor: Profesor = Relationship(back_populates="cursos")
+
+    # Relación N:1 con Departamento
+    departamento: Departamento = Relationship(back_populates="cursos")
+
+    # Relación N:M con Estudiante a través de Matricula
+    estudiantes: list[Estudiante] = Relationship(back_populates="cursos", link_model=Matricula)
 
