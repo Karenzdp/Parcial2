@@ -36,3 +36,19 @@ class Matricula(SQLModel, table=True):
     curso_id: int = Field(foreign_key="curso.id", primary_key=True)
     nota_final: Optional[float] = Field(default=None, ge=0.0, le=5.0, description="Nota final del curso (0.0 - 5.0)")
     aprobado: Optional[bool] = Field(default=None, description="Si aprobó o no el curso (>=3.0)")
+
+
+
+#
+class Estudiante(EstudianteBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    # Relación N:M con Curso a través de Matricula
+    cursos: list["Curso"] = Relationship(back_populates="estudiantes", link_model=Matricula)
+
+class Curso(CursoBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    profesores: list["Profesor"] = Relationship(back_populates="cursos")
+    cursos: list["Curso"] = Relationship(back_populates="profesores")
+
+
