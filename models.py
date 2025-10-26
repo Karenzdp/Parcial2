@@ -1,5 +1,6 @@
 from operator import index
 
+from sqlalchemy.orm import relationship
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional
 from pydantic import field_validator, EmailStr
@@ -42,11 +43,9 @@ class Matricula(SQLModel, table=True):
 #
 class Estudiante(EstudianteBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-
-    # Relación N:M con Curso a través de Matricula
     cursos: list["Curso"] = Relationship(back_populates="estudiantes", link_model=Matricula)
 
-class Curso(CursoBase, table=True):
+class Departamento(CursoBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     profesores: list["Profesor"] = Relationship(back_populates="cursos")
     cursos: list["Curso"] = Relationship(back_populates="profesores")
