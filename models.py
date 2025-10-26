@@ -29,3 +29,10 @@ class ProfesorBase(SQLModel):
 class DepartamentoBase(SQLModel):
     codigo: str = Field(unique=True, index= True ,description="Codigo departamento (ej: ING, HUM)")
     nombre: str = Field(description="Nombre departamento")
+
+
+class Matricula(SQLModel, table=True):
+    estudiante_id: int = Field(foreign_key="estudiante.id", primary_key=True)
+    curso_id: int = Field(foreign_key="curso.id", primary_key=True)
+    nota_final: Optional[float] = Field(default=None, ge=0.0, le=5.0, description="Nota final del curso (0.0 - 5.0)")
+    aprobado: Optional[bool] = Field(default=None, description="Si aprobó o no el curso (>=3.0)")
