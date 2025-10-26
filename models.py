@@ -73,4 +73,35 @@ class Curso(CursoBase, table=True):
 
 #MODELOS PARA OPERACIONES
 
+class EstudianteCreate(EstudianteBase):
+    pass
 
+
+class EstudianteUpdate(SQLModel):
+    nombre: Optional[str] = None
+    email: Optional[EmailStr] = None
+    semestre: Optional[int] = Field(default=None, ge=1, le=12)
+    activo: Optional[bool] = None
+
+
+class CursoCreate(CursoBase):
+    profesor_id: int
+    departamento_id: int
+
+
+class CursoUpdate(SQLModel):
+    nombre: Optional[str] = None
+    creditos: Optional[int] = None
+    horario: Optional[str] = None
+    profesor_id: Optional[int] = None
+
+class ProfesorCreate(ProfesorBase):
+    departamento_id: int
+
+
+class ProfesorUpdate(SQLModel):
+    nombre: Optional[str] = None
+    email: Optional[str] = None
+    titulo: Optional[str] = None
+    departamento_id: Optional[int] = None
+    activo: Optional[bool] = None
