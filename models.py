@@ -40,7 +40,7 @@ class Matricula(SQLModel, table=True):
 
 
 
-#
+#MODELOS TABLA
 class Estudiante(EstudianteBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     cursos: list["Curso"] = Relationship(back_populates="estudiantes", link_model=Matricula)
@@ -68,4 +68,9 @@ class Curso(CursoBase, table=True):
 
     # Relación N:M con Estudiante a través de Matricula
     estudiantes: list[Estudiante] = Relationship(back_populates="cursos", link_model=Matricula)
+
+
+
+#MODELOS PARA OPERACIONES
+
 
