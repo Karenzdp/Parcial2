@@ -18,9 +18,16 @@ async def crear_estudiante(nuevo_estudiante:EstudianteCreate, session: SessionDe
     if len(nuevo_estudiante.cedula) < 5 or len(nuevo_estudiante.cedula) > 12:
         raise HTTPException(status_code=400, detail="La cédula debe tener entre 5 y 12 dígitos")
 
-    if not nuevo_estudiante.nombre.strip()
+    if not nuevo_estudiante.nombre.strip():
         raise HTTPException(status_code=400, detail="El nombre no puede estar vacio")
 
     if not all(c.isalpha() or c.isspace() for c in nuevo_estudiante.nombre):
         raise HTTPException(status_code=400, detail="El nombre solo puede contener letras y espacios")
 
+@router.get("/{estudiante_id}", response_model=EstudianteconCursos, summary="Obtener estudiante con sus cursos")
+async def obtener_estudiantes(estudiante_id:int , session: SessionDep):
+    estudiante = await session.get(Estudiante, estudiante_id)
+    if not estudiante:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
+
+    return estudiante
