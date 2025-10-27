@@ -1,28 +1,45 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from sqlmodel import select
 from db import SessionDep
 from models import (
     Estudiante, EstudianteCreate, EstudianteUpdate,
-    EstudianteconCursos, Curso
+    EstudianteConCursos, Curso
 )
 import re
 
 router=APIRouter()
 
-@router.post("/", response_model=Estudiante, status_code=201, summary="Crear estudiante")
-async def crear_estudiante(nuevo_estudiante:EstudianteCreate, session: SessionDep):
 
+@router.post("/", response_model=Estudiante, status_code=201, summary="Crear estudiante")
+async def crear_estudiante(nuevo_estudiante: EstudianteCreate, session: SessionDep):
+    # Validaciones de cédula
     if not nuevo_estudiante.cedula.isdigit():
         raise HTTPException(status_code=400, detail="La cedula solo puede contener números")
 
-    if len(nuevo_estudiante.cedula) < 5 or len(nuevo_estudiante.cedula) > 12:
-        raise HTTPException(status_code=400, detail="La cédula debe tener entre 5 y 12 dígitos")
+    result = await session.exec(select(Estudiante).where(Estudiante.cedula == nuevo_estudiante.cedula))
+    if result.first():
+        raise HTTPException(status_code=409, detail="La cédula ya existe")
 
-    if not nuevo_estudiante.nombre.strip():
-        raise HTTPException(status_code=400, detail="El nombre no puede estar vacio")
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, nuevo_estudiante.email):
+        raise HTTPException(status_code=400, detail="Formato de email inválido")
 
-    if not all(c.isalpha() or c.isspace() for c in nuevo_estudiante.nombre):
-        raise HTTPException(status_code=400, detail="El nombre solo puede contener letras y espacios")
+    result = await session.exec(select(Estudiante).where(Estudiante.email == nuevo_estudiante.email))
+    if result.first():
+        raise HTTPException(status_code=409, detail="El email ya existe")
+
+
+    if not nuevo_estudiante.semestre.isdigit():
+        raise HTTPException(status_code=400, detail="El semestre debe ser un número")
+    semestre_num = int(nuevo_estudiante.semestre)
+    if semestre_num < 1 or semestre_num > 12:
+        raise HTTPException(status_code=400, detail="El semestre debe estar entre 1 y 12")
+
+    estudiante = Estudiante.model_validate(nuevo_estudiante)
+    session.add(estudiante)
+    await session.commit()
+    await session.refresh(estudiante)
+    return estudiante
 
 @router.get("/{estudiante_id}", response_model=EstudianteconCursos, summary="Obtener estudiante con sus cursos")
 async def obtener_estudiantes(estudiante_id:int , session: SessionDep):
