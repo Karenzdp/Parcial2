@@ -124,3 +124,30 @@ class MatriculaCreate(SQLModel):
 class MatriculaUpdate(SQLModel):
     nota_final: Optional[float] = Field(ge=0, le=5)
     aprobado: Optional[bool] = None
+
+
+
+
+#MODELOS CON RELACIONES
+
+class EstudianteconCursos(EstudianteBase):
+    id: int
+    cursos: list[CursoBase]=[]
+
+class CursosConEstudiantes(CursoBase):
+    id: int
+    estudiantes: list[EstudianteBase]
+    profesore: ProfesorBase
+    departamento: DepartamentoBase
+
+class ProfesorConCursos(ProfesorBase):
+    id:int
+    cursos: list[CursoBase]=[]
+    departamento: DepartamentoBase
+
+class DepartamentoCompleto(DepartamentoBase):
+    id:int
+    profesores: list[ProfesorBase]=[]
+    cursos: list[CursoBase]=[]
+
+
