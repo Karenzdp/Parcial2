@@ -105,3 +105,22 @@ class ProfesorUpdate(SQLModel):
     titulo: Optional[str] = None
     departamento_id: Optional[int] = None
     activo: Optional[bool] = None
+
+
+class DepartamentoCreate(DepartamentoBase):
+    pass
+
+
+class DepartamentoUpdate(SQLModel):
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+
+
+class MatriculaCreate(SQLModel):
+    estudiante_id: int
+    curso_id: int
+
+
+class MatriculaUpdate(SQLModel):
+    nota_final: Optional[float] = Field(ge=0, le=5)
+    aprobado: Optional[bool] = None
