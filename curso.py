@@ -109,3 +109,63 @@ async def obtener_estudiantes_curso(curso_id: int, session: SessionDep):
         raise HTTPException(status_code=404, detail="Curso no encontrado")
 
     return curso.estudiantes
+
+@router.get("/buscar/codigo/{codigo}", response_model=Curso, summary="Buscar curso por codigo")
+async def buscar_por_codigo(codigo: str, session: SessionDep):
+    result= await session.exec(select(Curso).where(Curso.codigo == codigo))
+    curso= result.first()
+
+    if not curso:
+        raise HTTPException(status_code=404, detail="Curso no encontrado")
+    return curso
+
+@router.get("/buscar/nombre", response_model=list[Curso], summary="Buscar curso por nombre")
+async def buscar_por_nombre(nombre:str, session: SessionDep):
+    result= await session.exec(select(Curso).where(Curso.nombre.ilike(f"%{nombre}%")))
+
+    cursos= result.all()
+    if not cursos:
+        raise HTTPException(status_code=404, detaiL=f"No se encontraron cursos con '{nombre}' en su nombre")
+    return cursos
+
+@router.get("/buscar/creditos/{creditos}", response_model=list[Curso], summary="Buscar curso por creditos")
+async def buscar_por_creditos(creditos:int, session:SessionDep):
+
+
+    result= await session.exec(select(Curso).where(Curso.creditos == creditos))
+    cursos=result.all()
+
+    if not cursos:
+        raise HTTPException(status_code=404, detail=f"No se encontraron cursos con {creditos} créditos")
+
+    return cursos
+
+
+@router.get("/buscar/profesor/{profesor_id}", response_model=list[Curso], summary="Buscar cursos por profesor")
+async def buscar_por_profesor(profesor_id: int, session: SessionDep):
+    profesor = await session.get(Profesor, profesor_id)
+    if not profesor:
+        raise HTTPException(status_code=404, detail="Profesor no encontrado")
+
+    result = await session.exec(select(Curso).where(Curso.profesor_id == profesor_id))
+    cursos = result.all()
+
+    if not cursos:
+        raise HTTPException(status_code=404, detail="El profesor no tiene cursos asignados")
+
+    return cursos
+
+
+@router.get("/buscar/departamento/{departamento_id}", response_model=list[Curso], summary="Buscar cursos por departamento")
+async def buscar_por_departamento(departamento_id: int, session: SessionDep):
+    departamento = await session.get(Departamento, departamento_id)
+    if not departamento:
+        raise HTTPException(status_code=404, detail="Departamento no encontrado")
+
+    result = await session.exec(select(Curso).where(Curso.departamento_id == departamento_id))
+    cursos = result.all()
+
+    if not cursos:
+        raise HTTPException(status_code=404, detail="El departamento no tiene cursos")
+
+    return cursos
