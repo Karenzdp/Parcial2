@@ -49,6 +49,7 @@ async def crear_estudiante(nuevo_estudiante: EstudianteCreate, session: SessionD
     await session.refresh(estudiante)
     return estudiante
 
+
 @router.get("/{estudiante_id}", response_model=EstudianteConCursos, summary="Obtener estudiante con sus cursos")
 async def obtener_estudiantes(estudiante_id:int , session: SessionDep):
     estudiante = await session.get(Estudiante, estudiante_id)
@@ -56,6 +57,42 @@ async def obtener_estudiantes(estudiante_id:int , session: SessionDep):
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
 
     return estudiante
+
+
+@router.get("/buscar/cedula/{cedula}", response_model=Estudiante, summary="Buscar estudiante por cédula")
+async def buscar_por_cedula(cedula: str, session: SessionDep):
+    result = await session.exec(select(Estudiante).where(Estudiante.cedula == cedula))
+    estudiante = result.first()
+
+    if not estudiante:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
+
+    return estudiante
+
+
+@router.get("/buscar/semestre/{semestre}", response_model=list[Estudiante], summary="Buscar estudiantes por semestre")
+async def buscar_por_semestre(semestre: str, session: SessionDep):
+    result = await session.exec(select(Estudiante).where(Estudiante.semestre == semestre))
+    estudiantes = result.all()
+
+    if not estudiantes:
+        raise HTTPException(status_code=404, detail="No se encontraron estudiantes en ese semestre")
+
+    return estudiantes
+
+
+@router.get("/buscar/nombre", response_model=list[Estudiante], summary="Buscar estudiantes por nombre")
+async def buscar_por_nombre(nombre: str, session: SessionDep):
+
+    result = await session.exec(
+        select(Estudiante).where(Estudiante.nombre.ilike(f"%{nombre}%"))
+    )
+    estudiantes = result.all()
+
+    if not estudiantes:
+        raise HTTPException(status_code=404, detail=f"No se encontraron estudiantes con '{nombre}' en su nombre")
+
+    return estudiantes
 
 @router.put("/{estudiante_id}", response_model=Estudiante, summary="Actualizar estudiante")
 async def actualizar_estudiante(estudiante_id:int, datos_actualizacion: EstudianteUpdate, session: SessionDep):
