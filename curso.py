@@ -10,7 +10,7 @@ from models import (
 router= APIRouter()
 
 @router.post("/", response_model=Curso, status_code=201, summary="Crear curso")
-async def crear_curso(nuevo_curso: int , session: SessionDep):
+async def crear_curso(nuevo_curso: CursoCreate , session: SessionDep):
 
     if not nuevo_curso.codigo.strip():
         raise HTTPException(status_code=400, detail="El codigo no puede estar vacio", )
