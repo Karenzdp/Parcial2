@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException
-from sqlmodel import SessionDep
+from db import SessionDep
 from db import create_tables
+from sqlmodel import select
 from models import (
-    Curso,CursoCreate, CursoUpdate, CursosConEstudiantes,
-        Profesor, Departamento, Estudiante
+     Curso,CursoCreate, CursoUpdate, CursosConEstudiantes,
+    Profesor, Departamento, Estudiante
 )
 
 router= APIRouter()
@@ -13,7 +14,7 @@ async def crear_curso(nuevo_curso: int , session: SessionDep):
 
     if not nuevo_curso.codigo.strip():
         raise HTTPException(status_code=400, detail="El codigo no puede estar vacio", )
-    result = await session.exec(Select(Curso).where(Curso.codigo== nuevo_curso.codigo))
+    result = await session.exec(select(Curso).where(Curso.codigo== nuevo_curso.codigo))
     if result.first():
         raise HTTPException(status_code=409,detail="El codigo del curso ya existe")
 
@@ -99,3 +100,12 @@ async def eliminar_curso(curso_id: int, session: SessionDep):
     await session.delete(curso)
     await session.commit()
     return None
+
+
+@router.get("/{curso_id}/estudiantes", response_model=list[Estudiante], summary="Estudiantes de un curso")
+async def obtener_estudiantes_curso(curso_id: int, session: SessionDep):
+    curso = await session.get(Curso, curso_id)
+    if not curso:
+        raise HTTPException(status_code=404, detail="Curso no encontrado")
+
+    return curso.estudiantes
