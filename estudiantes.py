@@ -12,13 +12,22 @@ router=APIRouter()
 
 @router.post("/", response_model=Estudiante, status_code=201, summary="Crear estudiante")
 async def crear_estudiante(nuevo_estudiante: EstudianteCreate, session: SessionDep):
-    # Validaciones de cédula
+    # Validar cédula
     if not nuevo_estudiante.cedula.isdigit():
         raise HTTPException(status_code=400, detail="La cedula solo puede contener números")
+
+    if len(nuevo_estudiante.cedula) < 5 or len(nuevo_estudiante.cedula) > 12:
+        raise HTTPException(status_code=400, detail="La cédula debe tener entre 5 y 12 dígitos")
 
     result = await session.exec(select(Estudiante).where(Estudiante.cedula == nuevo_estudiante.cedula))
     if result.first():
         raise HTTPException(status_code=409, detail="La cédula ya existe")
+
+    if not nuevo_estudiante.nombre.strip():
+        raise HTTPException(status_code=400, detail="El nombre no puede estar vacio")
+
+    if not all(c.isalpha() or c.isspace() for c in nuevo_estudiante.nombre):
+        raise HTTPException(status_code=400, detail="El nombre solo puede contener letras y espacios")
 
     email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     if not re.match(email_regex, nuevo_estudiante.email):
@@ -27,7 +36,6 @@ async def crear_estudiante(nuevo_estudiante: EstudianteCreate, session: SessionD
     result = await session.exec(select(Estudiante).where(Estudiante.email == nuevo_estudiante.email))
     if result.first():
         raise HTTPException(status_code=409, detail="El email ya existe")
-
 
     if not nuevo_estudiante.semestre.isdigit():
         raise HTTPException(status_code=400, detail="El semestre debe ser un número")
@@ -41,7 +49,7 @@ async def crear_estudiante(nuevo_estudiante: EstudianteCreate, session: SessionD
     await session.refresh(estudiante)
     return estudiante
 
-@router.get("/{estudiante_id}", response_model=EstudianteconCursos, summary="Obtener estudiante con sus cursos")
+@router.get("/{estudiante_id}", response_model=EstudianteConCursos, summary="Obtener estudiante con sus cursos")
 async def obtener_estudiantes(estudiante_id:int , session: SessionDep):
     estudiante = await session.get(Estudiante, estudiante_id)
     if not estudiante:
