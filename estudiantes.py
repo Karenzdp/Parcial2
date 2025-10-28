@@ -7,61 +7,130 @@ from models import (
 )
 import re
 
-router=APIRouter()
+router = APIRouter()
 
 
 @router.post("/", response_model=Estudiante, status_code=201, summary="Crear estudiante")
-async def crear_estudiante(nuevo_estudiante: EstudianteCreate, session: SessionDep):
-    # Validar cédula
+def crear_estudiante(nuevo_estudiante: EstudianteCreate, session: SessionDep):
+    errores = []
+
     if not nuevo_estudiante.cedula.isdigit():
-        raise HTTPException(status_code=400, detail="La cedula solo puede contener números")
-
-    if len(nuevo_estudiante.cedula) < 5 or len(nuevo_estudiante.cedula) > 12:
-        raise HTTPException(status_code=400, detail="La cédula debe tener entre 5 y 12 dígitos")
-
-    result = await session.exec(select(Estudiante).where(Estudiante.cedula == nuevo_estudiante.cedula))
-    if result.first():
-        raise HTTPException(status_code=409, detail="La cédula ya existe")
+        errores.append("La cédula solo puede contener números")
+    elif len(nuevo_estudiante.cedula) < 5 or len(nuevo_estudiante.cedula) > 12:
+        errores.append("La cédula debe tener entre 5 y 12 dígitos")
+    else:
+        result = session.exec(select(Estudiante).where(Estudiante.cedula == nuevo_estudiante.cedula))
+        if result.first():
+            errores.append("La cédula ya existe")
 
     if not nuevo_estudiante.nombre.strip():
-        raise HTTPException(status_code=400, detail="El nombre no puede estar vacio")
+        errores.append("El nombre no puede estar vacío")
+    elif not all(c.isalpha() or c.isspace() for c in nuevo_estudiante.nombre):
+        errores.append("El nombre solo puede contener letras y espacios")
 
-    if not all(c.isalpha() or c.isspace() for c in nuevo_estudiante.nombre):
-        raise HTTPException(status_code=400, detail="El nombre solo puede contener letras y espacios")
-
-    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    if not re.match(email_regex, nuevo_estudiante.email):
-        raise HTTPException(status_code=400, detail="Formato de email inválido")
-
-    result = await session.exec(select(Estudiante).where(Estudiante.email == nuevo_estudiante.email))
-    if result.first():
-        raise HTTPException(status_code=409, detail="El email ya existe")
+    if '@' not in nuevo_estudiante.email or '.' not in nuevo_estudiante.email.split('@')[-1]:
+        errores.append("Formato de email inválido")
+    else:
+        result = session.exec(select(Estudiante).where(Estudiante.email == nuevo_estudiante.email))
+        if result.first():
+            errores.append("El email ya existe")
 
     if not nuevo_estudiante.semestre.isdigit():
-        raise HTTPException(status_code=400, detail="El semestre debe ser un número")
-    semestre_num = int(nuevo_estudiante.semestre)
-    if semestre_num < 1 or semestre_num > 12:
-        raise HTTPException(status_code=400, detail="El semestre debe estar entre 1 y 12")
+        errores.append("El semestre debe ser un número")
+    else:
+        semestre_num = int(nuevo_estudiante.semestre)
+        if semestre_num < 1 or semestre_num > 12:
+            errores.append("El semestre debe estar entre 1 y 12")
+
+    if errores:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "mensaje": "Errores de validación",
+                "errores": errores
+            }
+        )
 
     estudiante = Estudiante.model_validate(nuevo_estudiante)
     session.add(estudiante)
-    await session.commit()
-    await session.refresh(estudiante)
+    session.commit()
+    session.refresh(estudiante)
     return estudiante
 
 
 @router.get("/{estudiante_id}", response_model=EstudianteConCursos, summary="Obtener estudiante con sus cursos")
-async def obtener_estudiantes(estudiante_id:int , session: SessionDep):
-    estudiante = await session.get(Estudiante, estudiante_id)
+def obtener_estudiante(estudiante_id: int, session: SessionDep):
+    estudiante = session.get(Estudiante, estudiante_id)
     if not estudiante:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
 
     return estudiante
 
 
+@router.put("/{estudiante_id}", response_model=Estudiante, summary="Actualizar estudiante")
+def actualizar_estudiante(estudiante_id: int, datos_actualizacion: EstudianteUpdate, session: SessionDep):
+    estudiante = session.get(Estudiante, estudiante_id)
+    if not estudiante:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
+
+    if datos_actualizacion.nombre is not None:
+        if not datos_actualizacion.nombre.strip():
+            raise HTTPException(status_code=400, detail="El nombre no puede estar vacío")
+        if not all(c.isalpha() or c.isspace() for c in datos_actualizacion.nombre):
+            raise HTTPException(status_code=400, detail="El nombre solo puede contener letras y espacios")
+
+    if datos_actualizacion.email is not None:
+        if '@' not in datos_actualizacion.email or '.' not in datos_actualizacion.email.split('@')[-1]:
+            raise HTTPException(status_code=400, detail="Formato de email inválido")
+
+        result = session.exec(
+            select(Estudiante)
+            .where(Estudiante.email == datos_actualizacion.email, Estudiante.id != estudiante_id)
+        )
+        if result.first():
+            raise HTTPException(status_code=409, detail="El email ya existe")
+
+
+    if datos_actualizacion.semestre is not None:
+        if not datos_actualizacion.semestre.isdigit():
+            raise HTTPException(status_code=400, detail="El semestre debe ser un número")
+        semestre_num = int(datos_actualizacion.semestre)
+        if semestre_num < 1 or semestre_num > 12:
+            raise HTTPException(status_code=400, detail="El semestre debe estar entre 1 y 12")
+
+    datos = datos_actualizacion.model_dump(exclude_unset=True)
+    for key, value in datos.items():
+        setattr(estudiante, key, value)
+
+    session.add(estudiante)
+    session.commit()
+    session.refresh(estudiante)
+    return estudiante
+
+
+@router.delete("/{estudiante_id}", status_code=204, summary="Eliminar estudiante")
+def eliminar_estudiante(estudiante_id: int, session: SessionDep):
+    estudiante = session.get(Estudiante, estudiante_id)
+    if not estudiante:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
+
+    session.delete(estudiante)
+    session.commit()
+    return None
+
+
+@router.get("/{estudiante_id}/cursos", response_model=list[Curso], summary="Cursos de un estudiante")
+def obtener_cursos_estudiante(estudiante_id: int, session: SessionDep):
+    estudiante = session.get(Estudiante, estudiante_id)
+    if not estudiante:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
+
+    return estudiante.cursos
+
+
 @router.get("/buscar/cedula/{cedula}", response_model=Estudiante, summary="Buscar estudiante por cédula")
-async def buscar_por_cedula(cedula: str, session: SessionDep):
-    result = await session.exec(select(Estudiante).where(Estudiante.cedula == cedula))
+def buscar_por_cedula(cedula: str, session: SessionDep):
+    result = session.exec(select(Estudiante).where(Estudiante.cedula == cedula))
     estudiante = result.first()
 
     if not estudiante:
@@ -71,8 +140,8 @@ async def buscar_por_cedula(cedula: str, session: SessionDep):
 
 
 @router.get("/buscar/semestre/{semestre}", response_model=list[Estudiante], summary="Buscar estudiantes por semestre")
-async def buscar_por_semestre(semestre: str, session: SessionDep):
-    result = await session.exec(select(Estudiante).where(Estudiante.semestre == semestre))
+def buscar_por_semestre(semestre: str, session: SessionDep):
+    result = session.exec(select(Estudiante).where(Estudiante.semestre == semestre))
     estudiantes = result.all()
 
     if not estudiantes:
@@ -82,9 +151,9 @@ async def buscar_por_semestre(semestre: str, session: SessionDep):
 
 
 @router.get("/buscar/nombre", response_model=list[Estudiante], summary="Buscar estudiantes por nombre")
-async def buscar_por_nombre(nombre: str, session: SessionDep):
+def buscar_por_nombre(nombre: str, session: SessionDep):
 
-    result = await session.exec(
+    result = session.exec(
         select(Estudiante).where(Estudiante.nombre.ilike(f"%{nombre}%"))
     )
     estudiantes = result.all()
@@ -93,67 +162,3 @@ async def buscar_por_nombre(nombre: str, session: SessionDep):
         raise HTTPException(status_code=404, detail=f"No se encontraron estudiantes con '{nombre}' en su nombre")
 
     return estudiantes
-
-@router.put("/{estudiante_id}", response_model=Estudiante, summary="Actualizar estudiante")
-async def actualizar_estudiante(estudiante_id:int, datos_actualizacion: EstudianteUpdate, session: SessionDep):
-    estudiante= await session.get(Estudiante, estudiante_id)
-    if not estudiante:
-        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
-
-    if datos_actualizacion.nombre is not None:
-        if not datos_actualizacion.nombre.strip():
-            raise HTTPException( status_code=400, detail="El nombre no puede estar vacio")
-        if not all(c.isalpha() or c.isspace() for c in datos_actualizacion.nombre):
-            raise HTTPException(status_code=400, detail="El nombre solo puede contener letras y espacios")
-
-    if datos_actualizacion.email is not None:
-        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_regex, datos_actualizacion.email):
-            raise HTTPException(status_code=400, detail="Formato de email inválido")
-
-        result = await session.exec(
-            select(Estudiante)
-            .where(Estudiante.email == datos_actualizacion.email, Estudiante.id != estudiante_id)
-        )
-        if result.first():
-            raise HTTPException(status_code=409, detail="El email ya existe")
-
-        # Validar semestre
-    if datos_actualizacion.semestre is not None:
-        if not datos_actualizacion.semestre.isdigit():
-            raise HTTPException(status_code=400, detail="El semestre debe ser un número")
-        semestre_num = int(datos_actualizacion.semestre)
-        if semestre_num < 1 or semestre_num > 12:
-            raise HTTPException(status_code=400, detail="El semestre debe estar entre 1 y 12")
-
-        # Actualizar campos
-    datos = datos_actualizacion.model_dump(exclude_unset=True)
-    for key, value in datos.items():
-        setattr(estudiante, key, value)
-
-    session.add(estudiante)
-    await session.commit()
-    await session.refresh(estudiante)
-    return estudiante
-
-
-@router.delete("/{estudiante_id}", status_code=204, summary="Eliminar estudiante")
-async def eliminar_estudiante(estudiante_id: int, session: SessionDep):
-
-    estudiante = await session.get(Estudiante, estudiante_id)
-    if not estudiante:
-        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
-
-    await session.delete(estudiante)
-    await session.commit()
-    return None
-
-@router.get("/{estudiante_id}/cursos", response_model=list[Curso], summary="Cursos de un estudiante")
-async def obtener_cursos_estudiante(estudiante_id: int, session: SessionDep):
-    """Obtener todos los cursos en los que está matriculado un estudiante"""
-
-    estudiante = await session.get(Estudiante, estudiante_id)
-    if not estudiante:
-        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
-
-    return estudiante.cursos
