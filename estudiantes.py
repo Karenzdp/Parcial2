@@ -108,15 +108,26 @@ def actualizar_estudiante(estudiante_id: int, datos_actualizacion: EstudianteUpd
     return estudiante
 
 
-@router.delete("/{estudiante_id}", status_code=204, summary="Eliminar estudiante")
+@router.delete("/{estudiante_id}", status_code=200, summary="Desactivar estudiante (soft delete)")
 def eliminar_estudiante(estudiante_id: int, session: SessionDep):
     estudiante = session.get(Estudiante, estudiante_id)
     if not estudiante:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
 
-    session.delete(estudiante)
+    if not estudiante.activo:
+        raise HTTPException(status_code=400, detail="El estudiante ya está inactivo")
+
+    estudiante.activo = False
+    session.add(estudiante)
     session.commit()
-    return None
+    session.refresh(estudiante)
+
+    return {
+        "mensaje": "Estudiante desactivado exitosamente",
+        "estudiante_id": estudiante_id,
+        "nombre": estudiante.nombre,
+        "activo": estudiante.activo
+    }
 
 
 @router.get("/{estudiante_id}/cursos", response_model=list[Curso], summary="Cursos de un estudiante")
