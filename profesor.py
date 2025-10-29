@@ -13,12 +13,12 @@ def crear_profesor(nuevo_profesor: ProfesorCreate, session:SessionDep):
 
     errores=[]
 
-    if not nuevo_profesor.cedula.strip():
-        errores.append("El campo cedula no puede estar vacio")
+    if not nuevo_profesor.cedula.isdigit():
+        errores.append("La cédula solo puede contener números")
     elif len(nuevo_profesor.cedula)<5 or len(nuevo_profesor.cedula)> 12:
         errores.append("El numero de cédula debe estar entre 5 y 12 dígitos")
     else:
-        result=session.exec(select(Profesor).where(Profesor.cedula == nuevo_profesor))
+        result=session.exec(select(Profesor).where(Profesor.cedula == nuevo_profesor.cedula))
         if result.first():
             errores.append("La cedula ya existe")
     if not nuevo_profesor.nombre.strip():
@@ -51,9 +51,90 @@ def crear_profesor(nuevo_profesor: ProfesorCreate, session:SessionDep):
             }
         )
 
-    profesor = nuevo_profesor.model_dump(exclude_unset=True)
-    for key, value in profesor.items():
-        setattr(Profesor, key, value)
+    profesor = Profesor.model_validate(nuevo_profesor)
+    session.add(profesor)
+    session.commit()
+    session.refresh(profesor)
+    return profesor
+
+
+# Agregar después de la función crear_profesor:
+
+@router.get("/", response_model=list[Profesor], summary="Listar todos los profesores")
+def listar_profesores(session: SessionDep):
+    """Lista todos los profesores del sistema"""
+    result = session.exec(select(Profesor))
+    profesores = result.all()
+
+    if not profesores:
+        raise HTTPException(status_code=404, detail="No hay profesores registrados")
+
+    return profesores
+
+
+@router.get("/{profesor_id}", response_model=ProfesorConCursos, summary="Obtener profesor por ID")
+def obtener_profesor(profesor_id: int, session: SessionDep):
+    """Obtiene un profesor específico con sus cursos y departamento"""
+    profesor = session.get(Profesor, profesor_id)
+    if not profesor:
+        raise HTTPException(status_code=404, detail="Profesor no encontrado")
+
+    return profesor
+
+
+@router.put("/{profesor_id}", response_model=Profesor, summary="Actualizar profesor")
+def actualizar_profesor(profesor_id: int, datos_actualizacion: ProfesorUpdate, session: SessionDep):
+    """Actualiza los datos de un profesor existente"""
+    profesor = session.get(Profesor, profesor_id)
+    if not profesor:
+        raise HTTPException(status_code=404, detail="Profesor no encontrado")
+
+    errores = []
+
+    # Validar nombre si se proporciona
+    if datos_actualizacion.nombre is not None:
+        if not datos_actualizacion.nombre.strip():
+            errores.append("El nombre no puede estar vacío")
+        elif not all(c.isalpha() or c.isspace() for c in datos_actualizacion.nombre):
+            errores.append("El nombre solo puede contener letras y espacios")
+
+    # Validar email si se proporciona
+    if datos_actualizacion.email is not None:
+        if '@' not in datos_actualizacion.email or '.' not in datos_actualizacion.email.split('@')[-1]:
+            errores.append("Formato de email inválido")
+        else:
+            # Verificar que el email no esté en uso por otro profesor
+            result = session.exec(
+                select(Profesor)
+                .where(Profesor.email == datos_actualizacion.email, Profesor.id != profesor_id)
+            )
+            if result.first():
+                errores.append("El email ya existe")
+
+    # Validar título si se proporciona
+    if datos_actualizacion.titulo is not None:
+        if not datos_actualizacion.titulo.strip():
+            errores.append("El título no puede estar vacío")
+
+    # Validar departamento si se proporciona
+    if datos_actualizacion.departamento_id is not None:
+        departamento = session.get(Departamento, datos_actualizacion.departamento_id)
+        if not departamento:
+            errores.append("Departamento no encontrado")
+
+    if errores:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "mensaje": "Errores de validación",
+                "errores": errores
+            }
+        )
+
+    # Actualizar campos
+    datos = datos_actualizacion.model_dump(exclude_unset=True)
+    for key, value in datos.items():
+        setattr(profesor, key, value)
 
     session.add(profesor)
     session.commit()
@@ -61,15 +142,42 @@ def crear_profesor(nuevo_profesor: ProfesorCreate, session:SessionDep):
     return profesor
 
 
-@router.delete("/{profesor_id}", status_code=204, summary="Eliminar profesor")
+@router.delete("/{profesor_id}", status_code=200, summary="Desactivar profesor (soft delete)")
 def eliminar_profesor(profesor_id: int, session: SessionDep):
+    """
+    Desactiva un profesor en lugar de eliminarlo físicamente.
+    No podrá asignarse a nuevos cursos pero mantiene los existentes.
+    """
     profesor = session.get(Profesor, profesor_id)
     if not profesor:
         raise HTTPException(status_code=404, detail="Profesor no encontrado")
 
-    session.delete(profesor)
+    if not profesor.activo:
+        raise HTTPException(status_code=400, detail="El profesor ya está inactivo")
+
+    # Verificar si tiene cursos activos asignados
+    if profesor.cursos:
+        cursos_activos = [c.nombre for c in profesor.cursos]
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "mensaje": "No se puede desactivar el profesor porque tiene cursos asignados",
+                "cursos": cursos_activos,
+                "sugerencia": "Reasigne los cursos a otro profesor antes de desactivar"
+            }
+        )
+
+    profesor.activo = False
+    session.add(profesor)
     session.commit()
-    return None
+    session.refresh(profesor)
+
+    return {
+        "mensaje": "Profesor desactivado exitosamente",
+        "profesor_id": profesor_id,
+        "nombre": profesor.nombre,
+        "activo": profesor.activo
+    }
 
 
 @router.get("/{profesor_id}/cursos", response_model=list[Curso], summary="Cursos de un profesor")

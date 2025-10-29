@@ -90,15 +90,38 @@ def actualizar_curso(curso_id: int, datos_actualizacion: CursoUpdate, session: S
     return curso
 
 
-@router.delete("/{curso_id}", status_code=204, summary="Eliminar curso")
+@router.delete("/{curso_id}", status_code=200, summary="Desactivar curso (soft delete)")
 def eliminar_curso(curso_id: int, session: SessionDep):
+
     curso = session.get(Curso, curso_id)
     if not curso:
         raise HTTPException(status_code=404, detail="Curso no encontrado")
 
-    session.delete(curso)
+    if not curso.activo:
+        raise HTTPException(status_code=400, detail="El curso ya está inactivo")
+
+    if curso.estudiantes:
+        cantidad_estudiantes = len(curso.estudiantes)
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "mensaje": f"No se puede desactivar el curso porque tiene {cantidad_estudiantes} estudiante(s) matriculado(s)",
+                "sugerencia": "Desmatricule a los estudiantes antes de desactivar el curso"
+            }
+        )
+
+    curso.activo = False
+    session.add(curso)
     session.commit()
-    return None
+    session.refresh(curso)
+
+    return {
+        "mensaje": "Curso desactivado exitosamente",
+        "curso_id": curso_id,
+        "codigo": curso.codigo,
+        "nombre": curso.nombre,
+        "activo": curso.activo
+    }
 
 
 @router.get("/{curso_id}/estudiantes", response_model=list[Estudiante], summary="Estudiantes de un curso")
