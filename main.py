@@ -11,7 +11,10 @@ app = FastAPI(
 create_tables()
 
 app.include_router(estudiantes.router, tags=["Estudiantes"], prefix="/estudiantes")
-app.include_router(curso.router, tags=["Cursos"], prefix="/cursos")
+
 app.include_router(departamento.router, tags=["Departamento"], prefix="/departamentos")
+
 app.include_router(profesor.router, tags=["Profesor"], prefix="/profesores")
+app.include_router(curso.router, tags=["Cursos"], prefix="/cursos")
+
 app.include_router(matricula.router, tags=["Matriculas"], prefix="/matriculas")
