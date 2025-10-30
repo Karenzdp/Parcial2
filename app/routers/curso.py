@@ -188,6 +188,19 @@ def eliminar_curso(curso_id: int, session: SessionDep):
 
 @router.get("/{curso_id}/estudiantes", response_model=list[Estudiante], summary="Estudiantes de un curso")
 def obtener_estudiantes_curso(curso_id: int, session: SessionDep):
+    """
+        Obtiene la lista de estudiantes matriculados en un curso.
+
+        Args:
+            curso_id: ID del curso
+            session: Sesión de base de datos
+
+        Returns:
+            list[Estudiante]: Lista de estudiantes matriculados en el curso
+
+        Raises:
+            HTTPException 404: Si el curso no existe
+        """
     curso = session.get(Curso, curso_id)
     if not curso:
         raise HTTPException(status_code=404, detail="Curso no encontrado")
