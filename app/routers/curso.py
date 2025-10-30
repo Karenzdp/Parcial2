@@ -288,6 +288,19 @@ def buscar_por_creditos(creditos: int, session: SessionDep):
 
 @router.get("/buscar/profesor/{profesor_id}", response_model=list[Curso], summary="Buscar cursos por profesor")
 def buscar_por_profesor(profesor_id: int, session: SessionDep):
+    """
+        Busca todos los cursos asignados a un profesor.
+
+        Args:
+            profesor_id: ID del profesor
+            session: Sesión de base de datos
+
+        Returns:
+            list[Curso]: Lista de cursos del profesor
+
+        Raises:
+            HTTPException 404: Si el profesor no existe o no tiene cursos asignados
+        """
     profesor = session.get(Profesor, profesor_id)
     if not profesor:
         raise HTTPException(status_code=404, detail="Profesor no encontrado")
