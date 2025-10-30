@@ -7,7 +7,19 @@ router = APIRouter()
 
 @router.post("/", response_model=Departamento, status_code=201, summary="Crear departamento")
 def crear_departamento(nuevo_departamento: DepartamentoCreate, session: SessionDep):
+    """
+        Crea un nuevo departamento en el sistema.
 
+        Args:
+            nuevo_departamento: Datos del departamento a crear (código, nombre)
+            session: Sesión de base de datos
+
+        Returns:
+            Departamento: El departamento creado con su ID asignado
+
+        Raises:
+            HTTPException 400: Si el código está vacío, no es alfanumérico, tiene longitud incorrecta (2-5 caracteres), el nombre está vacío, o el código ya existe
+        """
     errores = []
 
     nuevo_departamento.codigo = nuevo_departamento.codigo.upper()
@@ -45,6 +57,19 @@ def crear_departamento(nuevo_departamento: DepartamentoCreate, session: SessionD
 
 @router.get("/{departamento_id}", response_model=DepartamentoCompleto, summary="Obtener departamento completo")
 def obtener_departamento(departamento_id: int, session: SessionDep):
+    """
+        Obtiene un departamento específico con sus profesores y cursos.
+
+        Args:
+            departamento_id: ID del departamento a obtener
+            session: Sesión de base de datos
+
+        Returns:
+            DepartamentoCompleto: Departamento con sus profesores y cursos asociados
+
+        Raises:
+            HTTPException 404: Si el departamento no existe
+        """
     departamento = session.get(Departamento, departamento_id)
     if not departamento:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
@@ -54,6 +79,21 @@ def obtener_departamento(departamento_id: int, session: SessionDep):
 
 @router.put("/{departamento_id}", response_model=Departamento, summary="Actualizar departamento")
 def actualizar_departamento(departamento_id: int, datos_actualizacion: DepartamentoUpdate, session: SessionDep):
+    """
+        Actualiza los datos de un departamento existente.
+
+        Args:
+            departamento_id: ID del departamento a actualizar
+            datos_actualizacion: Campos a actualizar (nombre)
+            session: Sesión de base de datos
+
+        Returns:
+            Departamento: El departamento actualizado
+
+        Raises:
+            HTTPException 400: Si el nombre está vacío
+            HTTPException 404: Si el departamento no existe
+        """
     departamento = session.get(Departamento, departamento_id)
     if not departamento:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
@@ -85,6 +125,20 @@ def actualizar_departamento(departamento_id: int, datos_actualizacion: Departame
 
 @router.delete("/{departamento_id}", status_code=204, summary="Eliminar departamento")
 def eliminar_departamento(departamento_id: int, session: SessionDep):
+    """
+        Elimina un departamento del sistema.
+
+        Args:
+            departamento_id: ID del departamento a eliminar
+            session: Sesión de base de datos
+
+        Returns:
+            None: No retorna contenido (status 204)
+
+        Raises:
+            HTTPException 400: Si el departamento tiene profesores o cursos asignados
+            HTTPException 404: Si el departamento no existe
+        """
     departamento = session.get(Departamento, departamento_id)
     if not departamento:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
@@ -108,6 +162,19 @@ def eliminar_departamento(departamento_id: int, session: SessionDep):
 
 @router.get("/{departamento_id}/profesores", response_model=list[Profesor], summary="Profesores de un departamento")
 def obtener_profesores_departamento(departamento_id: int, session: SessionDep):
+    """
+        Obtiene la lista de profesores de un departamento.
+
+        Args:
+            departamento_id: ID del departamento
+            session: Sesión de base de datos
+
+        Returns:
+            list[Profesor]: Lista de profesores del departamento
+
+        Raises:
+            HTTPException 404: Si el departamento no existe
+        """
     departamento = session.get(Departamento, departamento_id)
     if not departamento:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
@@ -117,6 +184,19 @@ def obtener_profesores_departamento(departamento_id: int, session: SessionDep):
 
 @router.get("/{departamento_id}/cursos", response_model=list[Curso], summary="Cursos de un departamento")
 def obtener_cursos_departamento(departamento_id: int, session: SessionDep):
+    """
+        Obtiene la lista de cursos de un departamento.
+
+        Args:
+            departamento_id: ID del departamento
+            session: Sesión de base de datos
+
+        Returns:
+            list[Curso]: Lista de cursos del departamento
+
+        Raises:
+            HTTPException 404: Si el departamento no existe
+        """
     departamento = session.get(Departamento, departamento_id)
     if not departamento:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
@@ -126,6 +206,19 @@ def obtener_cursos_departamento(departamento_id: int, session: SessionDep):
 
 @router.get("/buscar/codigo/{codigo}", response_model=Departamento, summary="Buscar departamento por código")
 def buscar_por_codigo(codigo: str, session: SessionDep):
+    """
+        Busca un departamento por su código.
+
+        Args:
+            codigo: Código del departamento a buscar
+            session: Sesión de base de datos
+
+        Returns:
+            Departamento: El departamento encontrado
+
+        Raises:
+            HTTPException 404: Si no se encuentra ningún departamento con ese código
+        """
     codigo = codigo.upper()
 
     result = session.exec(select(Departamento).where(Departamento.codigo == codigo))
@@ -139,6 +232,19 @@ def buscar_por_codigo(codigo: str, session: SessionDep):
 
 @router.get("/buscar/nombre", response_model=list[Departamento], summary="Buscar departamentos por nombre")
 def buscar_por_nombre(nombre: str, session: SessionDep):
+    """
+        Busca departamentos que contengan el nombre especificado.
+
+        Args:
+            nombre: Texto a buscar en el nombre del departamento
+            session: Sesión de base de datos
+
+        Returns:
+            list[Departamento]: Lista de departamentos que coinciden con la búsqueda
+
+        Raises:
+            HTTPException 404: Si no se encuentran departamentos con ese nombre
+        """
     result = session.exec(
         select(Departamento).where(Departamento.nombre.ilike(f"%{nombre}%"))
     )
@@ -152,6 +258,18 @@ def buscar_por_nombre(nombre: str, session: SessionDep):
 
 @router.get("/listar/todos", response_model=list[Departamento], summary="Listar todos los departamentos")
 def listar_todos(session: SessionDep):
+    """
+        Lista todos los departamentos del sistema.
+
+        Args:
+            session: Sesión de base de datos
+
+        Returns:
+            list[Departamento]: Lista de todos los departamentos
+
+        Raises:
+            HTTPException 404: Si no hay departamentos registrados
+        """
     result = session.exec(select(Departamento))
     departamentos = result.all()
 
