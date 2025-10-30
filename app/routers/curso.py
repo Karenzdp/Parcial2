@@ -317,6 +317,19 @@ def buscar_por_profesor(profesor_id: int, session: SessionDep):
 @router.get("/buscar/departamento/{departamento_id}", response_model=list[Curso],
             summary="Buscar cursos por departamento")
 def buscar_por_departamento(departamento_id: int, session: SessionDep):
+    """
+        Busca todos los cursos de un departamento.
+
+        Args:
+            departamento_id: ID del departamento
+            session: Sesión de base de datos
+
+        Returns:
+            list[Curso]: Lista de cursos del departamento
+
+        Raises:
+            HTTPException 404: Si el departamento no existe o no tiene cursos
+        """
     departamento = session.get(Departamento, departamento_id)
     if not departamento:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
