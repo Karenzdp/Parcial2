@@ -124,15 +124,25 @@ def actualizar_estudiante(estudiante_id: int, datos_actualizacion: EstudianteUpd
     return estudiante
 
 
-
-@router.delete("/{estudiante_id}", status_code=200, summary="Desactivar estudiante (soft delete)")
+@router.delete("/{estudiante_id}", status_code=200, summary="Desactivar estudiante")
 def eliminar_estudiante(estudiante_id: int, session: SessionDep):
+    from app.models import Matricula
+
     estudiante = session.get(Estudiante, estudiante_id)
     if not estudiante:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
 
     if not estudiante.activo:
         raise HTTPException(status_code=400, detail="El estudiante ya está inactivo")
+
+    cantidad_cursos = len(estudiante.cursos)
+    if cantidad_cursos > 0:
+        matriculas = session.exec(
+            select(Matricula).where(Matricula.estudiante_id == estudiante_id)
+        ).all()
+
+        for matricula in matriculas:
+            session.delete(matricula)
 
     estudiante.activo = False
     session.add(estudiante)
@@ -143,9 +153,9 @@ def eliminar_estudiante(estudiante_id: int, session: SessionDep):
         "mensaje": "Estudiante desactivado exitosamente",
         "estudiante_id": estudiante_id,
         "nombre": estudiante.nombre,
-        "activo": estudiante.activo
+        "activo": estudiante.activo,
+        "cursos_desmatriculados": cantidad_cursos
     }
-
 
 @router.get("/{estudiante_id}/cursos", response_model=list[Curso], summary="Cursos de un estudiante")
 def obtener_cursos_estudiante(estudiante_id: int, session: SessionDep):
