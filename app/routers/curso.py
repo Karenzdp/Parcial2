@@ -95,9 +95,9 @@ def actualizar_curso(curso_id: int, datos_actualizacion: CursoUpdate, session: S
     return curso
 
 
-
-@router.delete("/{curso_id}", status_code=200, summary="Desactivar curso (soft delete)")
+@router.delete("/{curso_id}", status_code=200, summary="Desactivar curso")
 def eliminar_curso(curso_id: int, session: SessionDep):
+    from app.models import Matricula
 
     curso = session.get(Curso, curso_id)
     if not curso:
@@ -106,15 +106,14 @@ def eliminar_curso(curso_id: int, session: SessionDep):
     if not curso.activo:
         raise HTTPException(status_code=400, detail="El curso ya está inactivo")
 
-    if curso.estudiantes:
-        cantidad_estudiantes = len(curso.estudiantes)
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "mensaje": f"No se puede desactivar el curso porque tiene {cantidad_estudiantes} estudiante(s) matriculado(s)",
-                "sugerencia": "Desmatricule a los estudiantes antes de desactivar el curso"
-            }
-        )
+    cantidad_estudiantes = len(curso.estudiantes)
+    if cantidad_estudiantes > 0:
+        matriculas = session.exec(
+            select(Matricula).where(Matricula.curso_id == curso_id)
+        ).all()
+
+        for matricula in matriculas:
+            session.delete(matricula)
 
     curso.activo = False
     session.add(curso)
@@ -126,7 +125,8 @@ def eliminar_curso(curso_id: int, session: SessionDep):
         "curso_id": curso_id,
         "codigo": curso.codigo,
         "nombre": curso.nombre,
-        "activo": curso.activo
+        "activo": curso.activo,
+        "estudiantes_desmatriculados": cantidad_estudiantes  # NUEVO
     }
 
 
