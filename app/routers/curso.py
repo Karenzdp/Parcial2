@@ -210,6 +210,19 @@ def obtener_estudiantes_curso(curso_id: int, session: SessionDep):
 
 @router.get("/buscar/codigo/{codigo}", response_model=Curso, summary="Buscar curso por código")
 def buscar_por_codigo(codigo: str, session: SessionDep):
+    """
+        Busca un curso por su código.
+
+        Args:
+            codigo: Código del curso a buscar
+            session: Sesión de base de datos
+
+        Returns:
+            Curso: El curso encontrado
+
+        Raises:
+            HTTPException 404: Si no se encuentra ningún curso con ese código
+        """
     result = session.exec(select(Curso).where(Curso.codigo.ilike(codigo)))
     curso = result.first()
 
@@ -221,6 +234,7 @@ def buscar_por_codigo(codigo: str, session: SessionDep):
 
 @router.get("/buscar/nombre", response_model=list[Curso], summary="Buscar cursos por nombre")
 def buscar_por_nombre(nombre: str, session: SessionDep):
+
     result = session.exec(
         select(Curso).where(Curso.nombre.ilike(f"%{nombre}%"))
     )
