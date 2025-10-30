@@ -11,7 +11,21 @@ router = APIRouter()
 
 @router.post("/", response_model=Curso, status_code=201, summary="Crear curso")
 def crear_curso(nuevo_curso: CursoCreate, session: SessionDep):
+    """
+        Crea un nuevo curso en el sistema.
 
+        Args:
+            nuevo_curso: Datos del curso a crear (código, nombre, créditos, horario, profesor_id, departamento_id)
+            session: Sesión de base de datos
+
+        Returns:
+            Curso: El curso creado con su ID asignado
+
+        Raises:
+            HTTPException 400: Si el código está vacío, nombre vacío, créditos fuera de rango (1-6), horario vacío, o el profesor no está activo
+            HTTPException 404: Si el profesor o departamento no existen
+            HTTPException 409: Si el código del curso ya existe
+        """
     if not nuevo_curso.codigo.strip():
         raise HTTPException(status_code=400, detail="El código no puede estar vacío")
 
