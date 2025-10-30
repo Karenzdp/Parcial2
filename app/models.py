@@ -35,13 +35,15 @@ class Matricula(SQLModel, table=True):
     estudiante_id: int = Field(foreign_key="estudiante.id", primary_key=True)
     curso_id: int = Field(foreign_key="curso.id", primary_key=True)
 
-
+    estudiante: "Estudiante" = Relationship(back_populates="matriculas")
+    curso: "Curso" = Relationship(back_populates="matriculas")
 
 
 #MODELOS TABLA
 class Estudiante(EstudianteBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     cursos: list["Curso"] = Relationship(back_populates="estudiantes", link_model=Matricula)
+    matriculas: list["Matricula"] = Relationship(back_populates="estudiante")
 
 
 class Departamento(DepartamentoBase, table=True):
@@ -67,6 +69,7 @@ class Curso(CursoBase, table=True):
 
     # Relación N:M con Estudiante a través de Matricula
     estudiantes: list[Estudiante] = Relationship(back_populates="cursos", link_model=Matricula)
+    matriculas: list["Matricula"] = Relationship(back_populates="curso")
 
 
 
@@ -119,9 +122,6 @@ class MatriculaCreate(SQLModel):
     curso_id: int
 
 
-class MatriculaUpdate(SQLModel):
-    nota_final: Optional[float] = Field(ge=0, le=5)
-    aprobado: Optional[bool] = None
 
 #MODELOS CON RELACIONES
 
