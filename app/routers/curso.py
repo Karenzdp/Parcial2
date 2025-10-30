@@ -62,6 +62,19 @@ def crear_curso(nuevo_curso: CursoCreate, session: SessionDep):
 
 @router.get("/{curso_id}", response_model=CursosConEstudiantes, summary="Obtener curso con estudiantes")
 def obtener_curso(curso_id: int, session: SessionDep):
+    """
+        Obtiene un curso específico con sus estudiantes, profesor y departamento.
+
+        Args:
+            curso_id: ID del curso a obtener
+            session: Sesión de base de datos
+
+        Returns:
+            CursosConEstudiantes: Curso con sus estudiantes matriculados, profesor y departamento
+
+        Raises:
+            HTTPException 404: Si el curso no existe
+        """
     curso = session.get(Curso, curso_id)
     if not curso:
         raise HTTPException(status_code=404, detail="Curso no encontrado")
