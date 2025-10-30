@@ -84,6 +84,21 @@ def obtener_curso(curso_id: int, session: SessionDep):
 
 @router.put("/{curso_id}", response_model=Curso, summary="Actualizar curso")
 def actualizar_curso(curso_id: int, datos_actualizacion: CursoUpdate, session: SessionDep):
+    """
+       Actualiza los datos de un curso existente.
+
+       Args:
+           curso_id: ID del curso a actualizar
+           datos_actualizacion: Campos a actualizar (nombre, créditos, horario, profesor_id)
+           session: Sesión de base de datos
+
+       Returns:
+           Curso: El curso actualizado
+
+       Raises:
+           HTTPException 400: Si no se envían campos válidos, nombre vacío, créditos fuera de rango (1-6), horario vacío, o el profesor no está activo
+           HTTPException 404: Si el curso o el profesor no existen
+       """
     curso = session.get(Curso, curso_id)
     if not curso:
         raise HTTPException(status_code=404, detail="Curso no encontrado")
@@ -124,6 +139,20 @@ def actualizar_curso(curso_id: int, datos_actualizacion: CursoUpdate, session: S
 
 @router.delete("/{curso_id}", status_code=200, summary="Desactivar curso")
 def eliminar_curso(curso_id: int, session: SessionDep):
+    """
+        Desactiva un curso y desmatricula a todos sus estudiantes.
+
+        Args:
+            curso_id: ID del curso a desactivar
+            session: Sesión de base de datos
+
+        Returns:
+            dict: Mensaje de confirmación con información del curso y cantidad de estudiantes desmatriculados
+
+        Raises:
+            HTTPException 400: Si el curso ya está inactivo
+            HTTPException 404: Si el curso no existe
+        """
     from app.models import Matricula
 
     curso = session.get(Curso, curso_id)
