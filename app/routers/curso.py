@@ -141,7 +141,7 @@ def obtener_estudiantes_curso(curso_id: int, session: SessionDep):
 
 @router.get("/buscar/codigo/{codigo}", response_model=Curso, summary="Buscar curso por código")
 def buscar_por_codigo(codigo: str, session: SessionDep):
-    result = session.exec(select(Curso).where(Curso.codigo == codigo))
+    result = session.exec(select(Curso).where(Curso.codigo.ilike(codigo)))
     curso = result.first()
 
     if not curso:
