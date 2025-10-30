@@ -260,6 +260,20 @@ def buscar_por_nombre(nombre: str, session: SessionDep):
 
 @router.get("/buscar/creditos/{creditos}", response_model=list[Curso], summary="Buscar cursos por créditos")
 def buscar_por_creditos(creditos: int, session: SessionDep):
+    """
+        Busca cursos con una cantidad específica de créditos.
+
+        Args:
+            creditos: Número de créditos a buscar (1-6)
+            session: Sesión de base de datos
+
+        Returns:
+            list[Curso]: Lista de cursos con esa cantidad de créditos
+
+        Raises:
+            HTTPException 400: Si los créditos están fuera del rango permitido (1-6)
+            HTTPException 404: Si no se encuentran cursos con esa cantidad de créditos
+        """
     if creditos < 1 or creditos > 6:
         raise HTTPException(status_code=400, detail="Los créditos deben estar entre 1 y 6")
 
