@@ -10,7 +10,20 @@ router=APIRouter()
 
 @router.post("/", response_model=Profesor, summary="Crear profesor")
 def crear_profesor(nuevo_profesor: ProfesorCreate, session:SessionDep):
+    """
+        Crea un nuevo profesor en el sistema.
 
+        Args:
+            nuevo_profesor: Datos del profesor a crear (cédula, nombre, email, título, departamento_id)
+            session: Sesión de base de datos
+
+        Returns:
+            Profesor: El profesor creado con su ID asignado
+
+        Raises:
+            HTTPException 400: Si la cédula no es numérica, tiene longitud incorrecta (5-12 dígitos), el nombre está vacío o contiene caracteres inválidos, formato de email inválido, título vacío, o algún campo ya existe
+            HTTPException 404: Si el departamento no existe
+        """
     errores=[]
 
     if not nuevo_profesor.cedula.isdigit():
@@ -58,11 +71,20 @@ def crear_profesor(nuevo_profesor: ProfesorCreate, session:SessionDep):
     return profesor
 
 
-# Agregar después de la función crear_profesor:
-
 @router.get("/", response_model=list[Profesor], summary="Listar todos los profesores")
 def listar_profesores(session: SessionDep):
-    """Lista todos los profesores del sistema"""
+    """
+    Lista todos los profesores del sistema.
+
+    Args:
+        session: Sesión de base de datos
+
+    Returns:
+        list[Profesor]: Lista de todos los profesores
+
+    Raises:
+        HTTPException 404: Si no hay profesores registrados
+    """
     result = session.exec(select(Profesor))
     profesores = result.all()
 
@@ -74,7 +96,19 @@ def listar_profesores(session: SessionDep):
 
 @router.get("/{profesor_id}", response_model=ProfesorConCursos, summary="Obtener profesor por ID")
 def obtener_profesor(profesor_id: int, session: SessionDep):
-    """Obtiene un profesor específico con sus cursos y departamento"""
+    """
+    Obtiene un profesor específico con sus cursos y departamento.
+
+    Args:
+        profesor_id: ID del profesor a obtener
+        session: Sesión de base de datos
+
+    Returns:
+        ProfesorConCursos: Profesor con sus cursos asignados y departamento
+
+    Raises:
+        HTTPException 404: Si el profesor no existe
+    """
     profesor = session.get(Profesor, profesor_id)
     if not profesor:
         raise HTTPException(status_code=404, detail="Profesor no encontrado")
@@ -84,6 +118,21 @@ def obtener_profesor(profesor_id: int, session: SessionDep):
 
 @router.put("/{profesor_id}", response_model=Profesor, summary="Actualizar profesor")
 def actualizar_profesor(profesor_id: int, datos_actualizacion: ProfesorUpdate, session: SessionDep):
+    """
+        Actualiza los datos de un profesor existente.
+
+        Args:
+            profesor_id: ID del profesor a actualizar
+            datos_actualizacion: Campos a actualizar (nombre, email, título, departamento_id, activo)
+            session: Sesión de base de datos
+
+        Returns:
+            Profesor: El profesor actualizado
+
+        Raises:
+            HTTPException 400: Si no se envían campos válidos, nombre contiene caracteres inválidos, o título vacío
+            HTTPException 404: Si el profesor o el departamento no existen
+        """
     profesor = session.get(Profesor, profesor_id)
     if not profesor:
         raise HTTPException(status_code=404, detail="Profesor no encontrado")
@@ -117,7 +166,20 @@ def actualizar_profesor(profesor_id: int, datos_actualizacion: ProfesorUpdate, s
 
 @router.delete("/{profesor_id}", status_code=200, summary="Eliminar profesor")
 def eliminar_profesor(profesor_id: int, session: SessionDep):
+    """
+        Desactiva un profesor del sistema.
 
+        Args:
+            profesor_id: ID del profesor a desactivar
+            session: Sesión de base de datos
+
+        Returns:
+            dict: Mensaje de confirmación con información del profesor desactivado
+
+        Raises:
+            HTTPException 400: Si el profesor ya está inactivo o tiene cursos asignados
+            HTTPException 404: Si el profesor no existe
+        """
     profesor = session.get(Profesor, profesor_id)
     if not profesor:
         raise HTTPException(status_code=404, detail="Profesor no encontrado")
@@ -151,6 +213,19 @@ def eliminar_profesor(profesor_id: int, session: SessionDep):
 
 @router.get("/{profesor_id}/cursos", response_model=list[Curso], summary="Cursos de un profesor")
 def obtener_cursos_profesor(profesor_id: int, session: SessionDep):
+    """
+        Obtiene la lista de cursos asignados a un profesor.
+
+        Args:
+            profesor_id: ID del profesor
+            session: Sesión de base de datos
+
+        Returns:
+            list[Curso]: Lista de cursos del profesor
+
+        Raises:
+            HTTPException 404: Si el profesor no existe
+        """
     profesor = session.get(Profesor, profesor_id)
     if not profesor:
         raise HTTPException(status_code=404, detail="Profesor no encontrado")
@@ -160,6 +235,19 @@ def obtener_cursos_profesor(profesor_id: int, session: SessionDep):
 
 @router.get("/buscar/cedula/{cedula}", response_model=Profesor, summary="Buscar profesor por cédula")
 def buscar_por_cedula(cedula: str, session: SessionDep):
+    """
+        Busca un profesor por su cédula.
+
+        Args:
+            cedula: Cédula del profesor a buscar
+            session: Sesión de base de datos
+
+        Returns:
+            Profesor: El profesor encontrado
+
+        Raises:
+            HTTPException 404: Si no se encuentra ningún profesor con esa cédula
+        """
     result = session.exec(select(Profesor).where(Profesor.cedula == cedula))
     profesor = result.first()
 
@@ -171,6 +259,19 @@ def buscar_por_cedula(cedula: str, session: SessionDep):
 
 @router.get("/buscar/nombre", response_model=list[Profesor], summary="Buscar profesores por nombre")
 def buscar_por_nombre(nombre: str, session: SessionDep):
+    """
+        Busca profesores que contengan el nombre especificado.
+
+        Args:
+            nombre: Texto a buscar en el nombre del profesor
+            session: Sesión de base de datos
+
+        Returns:
+            list[Profesor]: Lista de profesores que coinciden con la búsqueda
+
+        Raises:
+            HTTPException 404: Si no se encuentran profesores con ese nombre
+        """
     result = session.exec(
         select(Profesor).where(Profesor.nombre.ilike(f"%{nombre}%"))
     )
@@ -184,6 +285,19 @@ def buscar_por_nombre(nombre: str, session: SessionDep):
 
 @router.get("/buscar/titulo", response_model=list[Profesor], summary="Buscar profesores por título")
 def buscar_por_titulo(titulo: str, session: SessionDep):
+    """
+        Busca profesores que contengan el título especificado.
+
+        Args:
+            titulo: Texto a buscar en el título del profesor (ej: PhD, MSc, Ingeniero)
+            session: Sesión de base de datos
+
+        Returns:
+            list[Profesor]: Lista de profesores que coinciden con la búsqueda
+
+        Raises:
+            HTTPException 404: Si no se encuentran profesores con ese título
+        """
     result = session.exec(
         select(Profesor).where(Profesor.titulo.ilike(f"%{titulo}%"))
     )
@@ -197,6 +311,19 @@ def buscar_por_titulo(titulo: str, session: SessionDep):
 
 @router.get("/buscar/departamento/{departamento_id}", response_model=list[Profesor],summary="Buscar profesores por departamento")
 def buscar_por_departamento(departamento_id: int, session: SessionDep):
+    """
+        Busca todos los profesores de un departamento.
+
+        Args:
+            departamento_id: ID del departamento
+            session: Sesión de base de datos
+
+        Returns:
+            list[Profesor]: Lista de profesores del departamento
+
+        Raises:
+            HTTPException 404: Si el departamento no existe o no tiene profesores
+        """
     departamento = session.get(Departamento, departamento_id)
     if not departamento:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
@@ -210,23 +337,3 @@ def buscar_por_departamento(departamento_id: int, session: SessionDep):
     return profesores
 
 
-@router.get("/buscar/activos", response_model=list[Profesor], summary="Listar profesores activos")
-def buscar_activos(session: SessionDep):
-    result = session.exec(select(Profesor).where(Profesor.activo == True))
-    profesores = result.all()
-
-    if not profesores:
-        raise HTTPException(status_code=404, detail="No hay profesores activos")
-
-    return profesores
-
-
-@router.get("/buscar/inactivos", response_model=list[Profesor], summary="Listar profesores inactivos")
-def buscar_inactivos(session: SessionDep):
-    result = session.exec(select(Profesor).where(Profesor.activo == False))
-    profesores = result.all()
-
-    if not profesores:
-        raise HTTPException(status_code=404, detail="No hay profesores inactivos")
-
-    return profesores
