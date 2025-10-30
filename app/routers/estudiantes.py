@@ -11,6 +11,19 @@ router = APIRouter()
 
 @router.post("/", response_model=Estudiante, status_code=201, summary="Crear estudiante")
 def crear_estudiante(nuevo_estudiante: EstudianteCreate, session: SessionDep):
+    """
+       Crea un nuevo estudiante en el sistema.
+
+       Args:
+           nuevo_estudiante: Datos del estudiante a crear (cédula, nombre, email, semestre)
+           session: Sesión de base de datos
+
+       Returns:
+           Estudiante: El estudiante creado con su ID asignado
+
+       Raises:
+           HTTPException 400: Si la cédula no es numérica, tiene longitud incorrecta (5-12 dígitos), el nombre está vacío o contiene caracteres inválidos, formato de email inválido, semestre no es numérico o está fuera de rango (1-12), o algún campo ya existe
+       """
     errores = []
 
     if not nuevo_estudiante.cedula.isdigit():
@@ -59,6 +72,18 @@ def crear_estudiante(nuevo_estudiante: EstudianteCreate, session: SessionDep):
 
 @router.get("/", response_model=list[Estudiante], summary="Listar todos los estudiantes")
 def listar_estudiantes(session: SessionDep):
+    """
+        Lista todos los estudiantes del sistema.
+
+        Args:
+            session: Sesión de base de datos
+
+        Returns:
+            list[Estudiante]: Lista de todos los estudiantes
+
+        Raises:
+            HTTPException 404: Si no hay estudiantes registrados
+        """
     result = session.exec(select(Estudiante))
     estudiantes = result.all()
 
@@ -68,6 +93,19 @@ def listar_estudiantes(session: SessionDep):
     return estudiantes
 @router.get("/{estudiante_id}", response_model=EstudianteConCursos, summary="Obtener estudiante con sus cursos")
 def obtener_estudiante(estudiante_id: int, session: SessionDep):
+    """
+        Obtiene un estudiante específico con sus cursos matriculados.
+
+        Args:
+            estudiante_id: ID del estudiante a obtener
+            session: Sesión de base de datos
+
+        Returns:
+            EstudianteConCursos: Estudiante con sus cursos matriculados
+
+        Raises:
+            HTTPException 404: Si el estudiante no existe
+        """
     estudiante = session.get(Estudiante, estudiante_id)
     if not estudiante:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
@@ -77,6 +115,22 @@ def obtener_estudiante(estudiante_id: int, session: SessionDep):
 
 @router.put("/{estudiante_id}", response_model=Estudiante, summary="Actualizar estudiante")
 def actualizar_estudiante(estudiante_id: int, datos_actualizacion: EstudianteUpdate, session: SessionDep):
+    """
+        Actualiza los datos de un estudiante existente.
+
+        Args:
+            estudiante_id: ID del estudiante a actualizar
+            datos_actualizacion: Campos a actualizar (nombre, email, semestre, activo)
+            session: Sesión de base de datos
+
+        Returns:
+            Estudiante: El estudiante actualizado
+
+        Raises:
+            HTTPException 400: Si no se envían campos válidos, nombre contiene caracteres inválidos, formato de email inválido, semestre no numérico o fuera de rango (1-12)
+            HTTPException 404: Si el estudiante no existe
+            HTTPException 409: Si el email ya está registrado por otro estudiante
+        """
     estudiante = session.get(Estudiante, estudiante_id)
     if not estudiante:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
@@ -126,6 +180,20 @@ def actualizar_estudiante(estudiante_id: int, datos_actualizacion: EstudianteUpd
 
 @router.delete("/{estudiante_id}", status_code=200, summary="Desactivar estudiante")
 def eliminar_estudiante(estudiante_id: int, session: SessionDep):
+    """
+        Desactiva un estudiante y lo desmatricula de todos sus cursos.
+
+        Args:
+            estudiante_id: ID del estudiante a desactivar
+            session: Sesión de base de datos
+
+        Returns:
+            dict: Mensaje de confirmación con información del estudiante y cantidad de cursos desmatriculados
+
+        Raises:
+            HTTPException 400: Si el estudiante ya está inactivo
+            HTTPException 404: Si el estudiante no existe
+        """
     from app.models import Matricula
 
     estudiante = session.get(Estudiante, estudiante_id)
@@ -159,6 +227,19 @@ def eliminar_estudiante(estudiante_id: int, session: SessionDep):
 
 @router.get("/{estudiante_id}/cursos", response_model=list[Curso], summary="Cursos de un estudiante")
 def obtener_cursos_estudiante(estudiante_id: int, session: SessionDep):
+    """
+       Obtiene la lista de cursos en los que está matriculado un estudiante.
+
+       Args:
+           estudiante_id: ID del estudiante
+           session: Sesión de base de datos
+
+       Returns:
+           list[Curso]: Lista de cursos del estudiante
+
+       Raises:
+           HTTPException 404: Si el estudiante no existe
+       """
     estudiante = session.get(Estudiante, estudiante_id)
     if not estudiante:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
@@ -168,6 +249,19 @@ def obtener_cursos_estudiante(estudiante_id: int, session: SessionDep):
 
 @router.get("/buscar/cedula/{cedula}", response_model=Estudiante, summary="Buscar estudiante por cédula")
 def buscar_por_cedula(cedula: str, session: SessionDep):
+    """
+        Busca un estudiante por su cédula.
+
+        Args:
+            cedula: Cédula del estudiante a buscar
+            session: Sesión de base de datos
+
+        Returns:
+            Estudiante: El estudiante encontrado
+
+        Raises:
+            HTTPException 404: Si no se encuentra ningún estudiante con esa cédula
+        """
     result = session.exec(select(Estudiante).where(Estudiante.cedula == cedula))
     estudiante = result.first()
 
@@ -179,6 +273,19 @@ def buscar_por_cedula(cedula: str, session: SessionDep):
 
 @router.get("/buscar/semestre/{semestre}", response_model=list[Estudiante], summary="Buscar estudiantes por semestre")
 def buscar_por_semestre(semestre: str, session: SessionDep):
+    """
+        Busca estudiantes de un semestre específico.
+
+        Args:
+            semestre: Semestre a buscar (1-12)
+            session: Sesión de base de datos
+
+        Returns:
+            list[Estudiante]: Lista de estudiantes del semestre especificado
+
+        Raises:
+            HTTPException 404: Si no se encuentran estudiantes en ese semestre
+        """
     result = session.exec(select(Estudiante).where(Estudiante.semestre == semestre))
     estudiantes = result.all()
 
@@ -190,6 +297,19 @@ def buscar_por_semestre(semestre: str, session: SessionDep):
 
 @router.get("/buscar/nombre", response_model=list[Estudiante], summary="Buscar estudiantes por nombre")
 def buscar_por_nombre(nombre: str, session: SessionDep):
+    """
+        Busca estudiantes que contengan el nombre especificado.
+
+        Args:
+            nombre: Texto a buscar en el nombre del estudiante
+            session: Sesión de base de datos
+
+        Returns:
+            list[Estudiante]: Lista de estudiantes que coinciden con la búsqueda
+
+        Raises:
+            HTTPException 404: Si no se encuentran estudiantes con ese nombre
+        """
 
     result = session.exec(
         select(Estudiante).where(Estudiante.nombre.ilike(f"%{nombre}%"))
