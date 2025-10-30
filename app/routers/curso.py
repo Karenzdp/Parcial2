@@ -234,7 +234,19 @@ def buscar_por_codigo(codigo: str, session: SessionDep):
 
 @router.get("/buscar/nombre", response_model=list[Curso], summary="Buscar cursos por nombre")
 def buscar_por_nombre(nombre: str, session: SessionDep):
+    """
+        Busca cursos que contengan el nombre especificado.
 
+        Args:
+            nombre: Texto a buscar en el nombre del curso
+            session: Sesión de base de datos
+
+        Returns:
+            list[Curso]: Lista de cursos que coinciden con la búsqueda
+
+        Raises:
+            HTTPException 404: Si no se encuentran cursos con ese nombre
+        """
     result = session.exec(
         select(Curso).where(Curso.nombre.ilike(f"%{nombre}%"))
     )
